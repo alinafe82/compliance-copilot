@@ -1,33 +1,37 @@
 [project]
 name = "compliance-copilot"
 version = "0.1.0"
-description = "Example AI agent service"
+description = "AI-powered PR and ticket risk analyzer for security and compliance"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "fastapi",
-    "uvicorn[standard]",
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
     "pydantic>=2.0",
-    "httpx",
-    "jinja2",
-    "python-dotenv",
+    "pydantic-settings>=2.0",
+    "httpx>=0.26.0",
+    "jinja2>=3.1.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
-    "pytest-asyncio",
-    "coverage",
-    "mypy",
-    "ruff",
-    "black",
-    "isort",
-    "types-requests",
-    "requests-mock",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "coverage[toml]>=7.4.0",
+    "mypy>=1.8.0",
+    "ruff>=0.2.0",
+    "black>=24.0.0",
+    "isort>=5.13.0",
+    "types-requests>=2.31.0",
+    "httpx>=0.26.0",
 ]
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
 select = ["E","F","B","I","UP"]
 ignore = ["E501"]
 
@@ -41,5 +45,31 @@ disallow_untyped_defs = false
 check_untyped_defs = true
 
 [tool.pytest.ini_options]
-addopts = "-q"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--cov=src",
+    "--cov-branch",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
 pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
