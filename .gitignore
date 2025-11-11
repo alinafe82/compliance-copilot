@@ -15,3 +15,8 @@ junit.xml
 .vscode/
 .idea/
 .DS_Store
+
+# Claude Code files - never commit
+CLAUD*
+CLAUDE.md
+.claude/
