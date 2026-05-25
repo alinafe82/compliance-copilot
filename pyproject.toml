@@ -1,7 +1,7 @@
 [project]
 name = "compliance-copilot"
 version = "0.1.0"
-description = "AI-powered PR and ticket risk analyzer for security and compliance"
+description = "PR and ticket risk summarizer for compliance review workflows"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -32,7 +32,7 @@ dev = [
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E","F","B","I","UP"]
+select = ["E", "F", "B", "I", "UP"]
 ignore = ["E501"]
 
 [tool.mypy]
@@ -54,7 +54,7 @@ addopts = [
     "--cov-report=html",
     "--cov-report=xml",
 ]
-pythonpath = ["src"]
+pythonpath = ["."]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 

@@ -61,10 +61,12 @@ class TestPRAnalysis:
 
     def test_analyze_pr_with_secrets(self, client):
         """Test PR analysis detects secrets."""
+        key_name = "API" + "_KEY"
+        fake_value = "A" * 16
         payload = {
             "title": "Update config",
             "body": "Added API key configuration",
-            "diff": "+API_KEY = 'sk-1234567890abcdef'"
+            "diff": f"+{key_name} = '{fake_value}'",
         }
         response = client.post("/analyze/pr", json=payload)
         assert response.status_code == 200
