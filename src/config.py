@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     max_input_length: int = 50000  # Maximum characters for input text
     request_timeout: int = 30  # Timeout for LLM requests in seconds
     enable_cors: bool = True
+    cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     # LLM Configuration
     llm_provider: str = "mock"  # mock, openai, anthropic, etc.

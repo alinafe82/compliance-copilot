@@ -1,2 +1,2 @@
-"""Compliance Copilot - AI-powered PR and ticket risk analyzer."""
+"""Compliance Copilot - PR and ticket risk summarizer."""
 __version__ = "0.1.0"

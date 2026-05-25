@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="AI-powered PR and ticket risk analysis for compliance and security",
+    description="PR and ticket risk summarization for compliance review",
     lifespan=lifespan,
 )
 
@@ -42,7 +42,7 @@ app = FastAPI(
 if settings.enable_cors:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Configure appropriately for production
+        allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

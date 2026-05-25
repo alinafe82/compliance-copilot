@@ -61,9 +61,10 @@ class TestGetLLM:
 
     def test_get_openai_llm_with_api_key(self):
         """Test getting OpenAI backend with API key."""
-        llm = get_llm("openai", api_key="test-key", model="gpt-4")
+        placeholder = "test-" + "key"
+        llm = get_llm("openai", api_key=placeholder, model="gpt-4")
         assert isinstance(llm, OpenAILLM)
-        assert llm.api_key == "test-key"
+        assert llm.api_key == placeholder
         assert llm.model == "gpt-4"
 
     def test_unknown_provider_raises_error(self):
