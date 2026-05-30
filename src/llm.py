@@ -1,6 +1,9 @@
 """LLM integration with pluggable backend support."""
 import logging
 from abc import ABC, abstractmethod
+from typing import Any
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -94,19 +97,84 @@ class MockLLM(LLMBackend):
 
 
 class OpenAILLM(LLMBackend):
-    """OpenAI LLM backend (placeholder for future implementation)."""
+    """OpenAI Responses API backend."""
 
-    def __init__(self, api_key: str, model: str = "gpt-4"):
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "gpt-4",
+        timeout_seconds: float = 30.0,
+        base_url: str = "https://api.openai.com/v1",
+    ):
         self.api_key = api_key
         self.model = model
+        self.timeout_seconds = timeout_seconds
+        self.base_url = base_url.rstrip("/")
         logger.info(f"Initialized OpenAI backend with model {model}")
 
     def complete(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.0) -> str:
-        """Generate completion using OpenAI API."""
-        # TODO: Implement OpenAI API integration
-        # import openai
-        # response = openai.ChatCompletion.create(...)
-        raise NotImplementedError("OpenAI integration not yet implemented")
+        """Generate completion using the OpenAI Responses API."""
+        try:
+            response = httpx.post(
+                f"{self.base_url}/responses",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": self.model,
+                    "input": prompt,
+                    "max_output_tokens": max_tokens,
+                    "temperature": temperature,
+                },
+                timeout=self.timeout_seconds,
+            )
+            response.raise_for_status()
+        except httpx.TimeoutException as exc:
+            raise LLMTimeoutError("OpenAI request timed out") from exc
+        except httpx.HTTPStatusError as exc:
+            message = _extract_openai_error(exc.response)
+            raise LLMError(f"OpenAI API error {exc.response.status_code}: {message}") from exc
+        except httpx.RequestError as exc:
+            raise LLMError(f"OpenAI request failed: {exc}") from exc
+
+        payload = response.json()
+        return _extract_response_text(payload)
+
+
+def _extract_openai_error(response: httpx.Response) -> str:
+    try:
+        payload = response.json()
+    except ValueError:
+        return response.text or "unknown error"
+    error = payload.get("error")
+    if isinstance(error, dict) and isinstance(error.get("message"), str):
+        return error["message"]
+    return "unknown error"
+
+
+def _extract_response_text(payload: dict[str, Any]) -> str:
+    direct_output = payload.get("output_text")
+    if isinstance(direct_output, str) and direct_output.strip():
+        return direct_output
+
+    text_parts: list[str] = []
+    output = payload.get("output")
+    if isinstance(output, list):
+        for item in output:
+            if not isinstance(item, dict):
+                continue
+            content = item.get("content")
+            if not isinstance(content, list):
+                continue
+            for block in content:
+                if isinstance(block, dict) and isinstance(block.get("text"), str):
+                    text_parts.append(block["text"])
+
+    if text_parts:
+        return "\n".join(text_parts).strip()
+
+    raise LLMError("OpenAI response did not include output text")
 
 
 def get_llm(
@@ -141,4 +209,3 @@ def get_llm(
 
     else:
         raise ValueError(f"Unknown LLM provider: {provider}")
-

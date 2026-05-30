@@ -1,7 +1,8 @@
 """Tests for LLM module."""
+import httpx
 import pytest
 
-from src.llm import LLMBackend, MockLLM, OpenAILLM, get_llm
+from src.llm import LLMBackend, LLMTimeoutError, MockLLM, OpenAILLM, get_llm
 
 
 class TestMockLLM:
@@ -61,10 +62,10 @@ class TestGetLLM:
 
     def test_get_openai_llm_with_api_key(self):
         """Test getting OpenAI backend with API key."""
-        placeholder = "test-" + "key"
-        llm = get_llm("openai", api_key=placeholder, model="gpt-4")
+        api_key = "test-" + "key"
+        llm = get_llm("openai", api_key=api_key, model="gpt-4")
         assert isinstance(llm, OpenAILLM)
-        assert llm.api_key == placeholder
+        assert llm.api_key == api_key
         assert llm.model == "gpt-4"
 
     def test_unknown_provider_raises_error(self):
@@ -86,10 +87,74 @@ class TestGetLLM:
 
 
 class TestOpenAILLM:
-    """Tests for OpenAI LLM backend (placeholder)."""
+    """Tests for OpenAI LLM backend."""
 
-    def test_openai_complete_not_implemented(self):
-        """Test that OpenAI complete raises NotImplementedError."""
+    def test_openai_complete_calls_responses_api(self, monkeypatch):
+        """Test that OpenAI complete calls the Responses API."""
+        captured: dict[str, object] = {}
+
+        def fake_post(url, headers, json, timeout):
+            captured.update(
+                {
+                    "url": url,
+                    "headers": headers,
+                    "json": json,
+                    "timeout": timeout,
+                }
+            )
+            return httpx.Response(
+                200,
+                json={
+                    "output": [
+                        {
+                            "content": [
+                                {"type": "output_text", "text": "Reviewed risk summary."}
+                            ]
+                        }
+                    ]
+                },
+                request=httpx.Request("POST", url),
+            )
+
+        monkeypatch.setattr(httpx, "post", fake_post)
+        llm = OpenAILLM(api_key="test-key", model="gpt-4o-mini", timeout_seconds=12)
+
+        result = llm.complete("test prompt", max_tokens=250, temperature=0.2)
+
+        assert result == "Reviewed risk summary."
+        assert captured["url"] == "https://api.openai.com/v1/responses"
+        assert captured["headers"]["Authorization"] == "Bearer test-key"
+        assert captured["json"] == {
+            "model": "gpt-4o-mini",
+            "input": "test prompt",
+            "max_output_tokens": 250,
+            "temperature": 0.2,
+        }
+        assert captured["timeout"] == 12
+
+    def test_openai_complete_handles_direct_output_text(self, monkeypatch):
+        """Test direct output_text extraction."""
+
+        def fake_post(url, headers, json, timeout):
+            return httpx.Response(
+                200,
+                json={"output_text": "Direct response."},
+                request=httpx.Request("POST", url),
+            )
+
+        monkeypatch.setattr(httpx, "post", fake_post)
         llm = OpenAILLM(api_key="test-key")
-        with pytest.raises(NotImplementedError):
+
+        assert llm.complete("test prompt") == "Direct response."
+
+    def test_openai_complete_maps_timeout(self, monkeypatch):
+        """Test timeout mapping."""
+
+        def fake_post(url, headers, json, timeout):
+            raise httpx.TimeoutException("timed out")
+
+        monkeypatch.setattr(httpx, "post", fake_post)
+        llm = OpenAILLM(api_key="test-key")
+
+        with pytest.raises(LLMTimeoutError, match="timed out"):
             llm.complete("test prompt")

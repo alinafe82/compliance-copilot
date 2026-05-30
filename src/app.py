@@ -92,6 +92,14 @@ class HealthResponse(BaseModel):
     environment: str
 
 
+class RootResponse(BaseModel):
+    """Service metadata response."""
+    service: str
+    version: str
+    docs: str
+    health: str
+
+
 class ErrorResponse(BaseModel):
     """Error response model."""
     error: str
@@ -143,19 +151,19 @@ async def llm_timeout_handler(request: Request, exc: LLMTimeoutError):
 
 
 # API Endpoints
-@app.get("/", response_model=dict[str, str])
-async def root():
+@app.get("/", response_model=RootResponse)
+async def root() -> RootResponse:
     """Root endpoint with API information."""
-    return {
-        "service": settings.app_name,
-        "version": settings.app_version,
-        "docs": "/docs",
-        "health": "/health",
-    }
+    return RootResponse(
+        service=settings.app_name,
+        version=settings.app_version,
+        docs="/docs",
+        health="/health",
+    )
 
 
 @app.get("/health", response_model=HealthResponse)
-async def health_check():
+async def health_check() -> HealthResponse:
     """Health check endpoint for container orchestration."""
     return HealthResponse(
         status="healthy",
@@ -165,7 +173,7 @@ async def health_check():
 
 
 @app.post("/analyze/pr", response_model=AnalysisResponse, status_code=status.HTTP_200_OK)
-async def analyze_pr(pr: PRPayload):
+async def analyze_pr(pr: PRPayload) -> AnalysisResponse:
     """
     Analyze pull request for security and compliance risks.
 
@@ -244,7 +252,7 @@ async def analyze_pr(pr: PRPayload):
 
 
 @app.post("/analyze/ticket", response_model=AnalysisResponse, status_code=status.HTTP_200_OK)
-async def analyze_ticket(ticket: TicketPayload):
+async def analyze_ticket(ticket: TicketPayload) -> AnalysisResponse:
     """
     Analyze ticket/issue for security and compliance risks.
 
