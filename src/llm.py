@@ -22,7 +22,9 @@ class LLMBackend(ABC):
     """Abstract base class for LLM backends."""
 
     @abstractmethod
-    def complete(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.0) -> str:
+    async def complete(
+        self, prompt: str, max_tokens: int = 1000, temperature: float = 0.0
+    ) -> str:
         """
         Generate completion from prompt.
 
@@ -44,7 +46,9 @@ class LLMBackend(ABC):
 class MockLLM(LLMBackend):
     """Mock LLM for testing and development."""
 
-    def complete(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.0) -> str:
+    async def complete(
+        self, prompt: str, max_tokens: int = 1000, temperature: float = 0.0
+    ) -> str:
         """Generate mock completion based on keywords."""
         logger.debug(f"MockLLM received prompt of length {len(prompt)}")
 
@@ -112,23 +116,25 @@ class OpenAILLM(LLMBackend):
         self.base_url = base_url.rstrip("/")
         logger.info(f"Initialized OpenAI backend with model {model}")
 
-    def complete(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.0) -> str:
+    async def complete(
+        self, prompt: str, max_tokens: int = 1000, temperature: float = 0.0
+    ) -> str:
         """Generate completion using the OpenAI Responses API."""
         try:
-            response = httpx.post(
-                f"{self.base_url}/responses",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": self.model,
-                    "input": prompt,
-                    "max_output_tokens": max_tokens,
-                    "temperature": temperature,
-                },
-                timeout=self.timeout_seconds,
-            )
+            async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+                response = await client.post(
+                    f"{self.base_url}/responses",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": self.model,
+                        "input": prompt,
+                        "max_output_tokens": max_tokens,
+                        "temperature": temperature,
+                    },
+                )
             response.raise_for_status()
         except httpx.TimeoutException as exc:
             raise LLMTimeoutError("OpenAI request timed out") from exc
@@ -138,7 +144,10 @@ class OpenAILLM(LLMBackend):
         except httpx.RequestError as exc:
             raise LLMError(f"OpenAI request failed: {exc}") from exc
 
-        payload = response.json()
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise LLMError("OpenAI response did not include valid JSON") from exc
         return _extract_response_text(payload)
 
 
@@ -180,7 +189,8 @@ def _extract_response_text(payload: dict[str, Any]) -> str:
 def get_llm(
     provider: str = "mock",
     api_key: str | None = None,
-    model: str | None = None
+    model: str | None = None,
+    timeout_seconds: float | None = None,
 ) -> LLMBackend:
     """
     Factory function to get LLM backend instance.
@@ -205,7 +215,11 @@ def get_llm(
     elif provider_lower == "openai":
         if not api_key:
             raise ValueError("OpenAI provider requires api_key")
-        return OpenAILLM(api_key=api_key, model=model or "gpt-4")
+        return OpenAILLM(
+            api_key=api_key,
+            model=model or "gpt-4",
+            timeout_seconds=timeout_seconds if timeout_seconds is not None else 30.0,
+        )
 
     else:
         raise ValueError(f"Unknown LLM provider: {provider}")

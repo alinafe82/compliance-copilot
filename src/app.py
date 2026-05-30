@@ -203,6 +203,7 @@ async def analyze_pr(pr: PRPayload) -> AnalysisResponse:
             provider=settings.llm_provider,
             api_key=settings.llm_api_key or None,
             model=settings.llm_model,
+            timeout_seconds=settings.request_timeout,
         )
 
         # Generate prompt and get analysis
@@ -213,7 +214,7 @@ async def analyze_pr(pr: PRPayload) -> AnalysisResponse:
             f"Input:\n{sanitized}"
         )
 
-        result = llm.complete(
+        result = await llm.complete(
             prompt,
             max_tokens=settings.llm_max_tokens,
             temperature=settings.llm_temperature,
@@ -243,6 +244,9 @@ async def analyze_pr(pr: PRPayload) -> AnalysisResponse:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         ) from e
+    except LLMError as e:
+        logger.error(f"LLM error in PR analysis: {str(e)}", exc_info=True)
+        raise
     except Exception as e:
         logger.error(f"Unexpected error in PR analysis: {str(e)}", exc_info=True)
         raise HTTPException(
@@ -282,6 +286,7 @@ async def analyze_ticket(ticket: TicketPayload) -> AnalysisResponse:
             provider=settings.llm_provider,
             api_key=settings.llm_api_key or None,
             model=settings.llm_model,
+            timeout_seconds=settings.request_timeout,
         )
 
         # Generate prompt and get analysis
@@ -292,7 +297,7 @@ async def analyze_ticket(ticket: TicketPayload) -> AnalysisResponse:
             f"Input:\n{sanitized}"
         )
 
-        result = llm.complete(
+        result = await llm.complete(
             prompt,
             max_tokens=settings.llm_max_tokens,
             temperature=settings.llm_temperature,
@@ -322,6 +327,9 @@ async def analyze_ticket(ticket: TicketPayload) -> AnalysisResponse:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         ) from e
+    except LLMError as e:
+        logger.error(f"LLM error in ticket analysis: {str(e)}", exc_info=True)
+        raise
     except Exception as e:
         logger.error(f"Unexpected error in ticket analysis: {str(e)}", exc_info=True)
         raise HTTPException(

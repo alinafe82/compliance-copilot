@@ -2,47 +2,53 @@
 import httpx
 import pytest
 
-from src.llm import LLMBackend, LLMTimeoutError, MockLLM, OpenAILLM, get_llm
+from src.llm import LLMBackend, LLMError, LLMTimeoutError, MockLLM, OpenAILLM, get_llm
 
 
 class TestMockLLM:
     """Tests for MockLLM backend."""
 
-    def test_mock_llm_is_backend(self):
+    @pytest.mark.asyncio
+    async def test_mock_llm_is_backend(self):
         """Test that MockLLM implements LLMBackend."""
         llm = MockLLM()
         assert isinstance(llm, LLMBackend)
 
-    def test_secret_scenario(self):
+    @pytest.mark.asyncio
+    async def test_secret_scenario(self):
         """Test mock response for secret exposure."""
         llm = MockLLM()
-        result = llm.complete("Found api key in code")
+        result = await llm.complete("Found api key in code")
         assert "CRITICAL" in result or "secret" in result.lower()
         assert "rotate" in result.lower()
 
-    def test_vulnerability_scenario(self):
+    @pytest.mark.asyncio
+    async def test_vulnerability_scenario(self):
         """Test mock response for vulnerability."""
         llm = MockLLM()
-        result = llm.complete("SQL injection vulnerability found")
+        result = await llm.complete("SQL injection vulnerability found")
         assert "RISK" in result or "vulnerability" in result.lower()
         assert "security" in result.lower()
 
-    def test_database_scenario(self):
+    @pytest.mark.asyncio
+    async def test_database_scenario(self):
         """Test mock response for database operations."""
         llm = MockLLM()
-        result = llm.complete("Database migration with deletion")
+        result = await llm.complete("Database migration with deletion")
         assert "RISK" in result or "database" in result.lower()
 
-    def test_default_scenario(self):
+    @pytest.mark.asyncio
+    async def test_default_scenario(self):
         """Test mock response for normal case."""
         llm = MockLLM()
-        result = llm.complete("Added new feature for user profile")
+        result = await llm.complete("Added new feature for user profile")
         assert "LOW RISK" in result or "low risk" in result.lower()
 
-    def test_complete_with_parameters(self):
+    @pytest.mark.asyncio
+    async def test_complete_with_parameters(self):
         """Test complete method accepts parameters."""
         llm = MockLLM()
-        result = llm.complete("test", max_tokens=500, temperature=0.5)
+        result = await llm.complete("test", max_tokens=500, temperature=0.5)
         assert isinstance(result, str)
         assert len(result) > 0
 
@@ -63,10 +69,11 @@ class TestGetLLM:
     def test_get_openai_llm_with_api_key(self):
         """Test getting OpenAI backend with API key."""
         api_key = "test-" + "key"
-        llm = get_llm("openai", api_key=api_key, model="gpt-4")
+        llm = get_llm("openai", api_key=api_key, model="gpt-4", timeout_seconds=12)
         assert isinstance(llm, OpenAILLM)
         assert llm.api_key == api_key
         assert llm.model == "gpt-4"
+        assert llm.timeout_seconds == 12
 
     def test_unknown_provider_raises_error(self):
         """Test that unknown provider raises ValueError."""
@@ -89,37 +96,47 @@ class TestGetLLM:
 class TestOpenAILLM:
     """Tests for OpenAI LLM backend."""
 
-    def test_openai_complete_calls_responses_api(self, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_openai_complete_calls_responses_api(self, monkeypatch):
         """Test that OpenAI complete calls the Responses API."""
         captured: dict[str, object] = {}
 
-        def fake_post(url, headers, json, timeout):
-            captured.update(
-                {
-                    "url": url,
-                    "headers": headers,
-                    "json": json,
-                    "timeout": timeout,
-                }
-            )
-            return httpx.Response(
-                200,
-                json={
-                    "output": [
-                        {
-                            "content": [
-                                {"type": "output_text", "text": "Reviewed risk summary."}
-                            ]
-                        }
-                    ]
-                },
-                request=httpx.Request("POST", url),
-            )
+        class FakeClient:
+            def __init__(self, timeout):
+                captured["timeout"] = timeout
 
-        monkeypatch.setattr(httpx, "post", fake_post)
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def post(self, url, headers, json):
+                captured.update(
+                    {
+                        "url": url,
+                        "headers": headers,
+                        "json": json,
+                    }
+                )
+                return httpx.Response(
+                    200,
+                    json={
+                        "output": [
+                            {
+                                "content": [
+                                    {"type": "output_text", "text": "Reviewed risk summary."}
+                                ]
+                            }
+                        ]
+                    },
+                    request=httpx.Request("POST", url),
+                )
+
+        monkeypatch.setattr(httpx, "AsyncClient", FakeClient)
         llm = OpenAILLM(api_key="test-key", model="gpt-4o-mini", timeout_seconds=12)
 
-        result = llm.complete("test prompt", max_tokens=250, temperature=0.2)
+        result = await llm.complete("test prompt", max_tokens=250, temperature=0.2)
 
         assert result == "Reviewed risk summary."
         assert captured["url"] == "https://api.openai.com/v1/responses"
@@ -132,29 +149,78 @@ class TestOpenAILLM:
         }
         assert captured["timeout"] == 12
 
-    def test_openai_complete_handles_direct_output_text(self, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_openai_complete_handles_direct_output_text(self, monkeypatch):
         """Test direct output_text extraction."""
 
-        def fake_post(url, headers, json, timeout):
-            return httpx.Response(
-                200,
-                json={"output_text": "Direct response."},
-                request=httpx.Request("POST", url),
-            )
+        class FakeClient:
+            def __init__(self, timeout):
+                self.timeout = timeout
 
-        monkeypatch.setattr(httpx, "post", fake_post)
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def post(self, url, headers, json):
+                return httpx.Response(
+                    200,
+                    json={"output_text": "Direct response."},
+                    request=httpx.Request("POST", url),
+                )
+
+        monkeypatch.setattr(httpx, "AsyncClient", FakeClient)
         llm = OpenAILLM(api_key="test-key")
 
-        assert llm.complete("test prompt") == "Direct response."
+        assert await llm.complete("test prompt") == "Direct response."
 
-    def test_openai_complete_maps_timeout(self, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_openai_complete_maps_timeout(self, monkeypatch):
         """Test timeout mapping."""
 
-        def fake_post(url, headers, json, timeout):
-            raise httpx.TimeoutException("timed out")
+        class FakeClient:
+            def __init__(self, timeout):
+                self.timeout = timeout
 
-        monkeypatch.setattr(httpx, "post", fake_post)
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def post(self, url, headers, json):
+                raise httpx.TimeoutException("timed out", request=httpx.Request("POST", url))
+
+        monkeypatch.setattr(httpx, "AsyncClient", FakeClient)
         llm = OpenAILLM(api_key="test-key")
 
         with pytest.raises(LLMTimeoutError, match="timed out"):
-            llm.complete("test prompt")
+            await llm.complete("test prompt")
+
+    @pytest.mark.asyncio
+    async def test_openai_complete_maps_malformed_json(self, monkeypatch):
+        """Test malformed upstream JSON is treated as an LLM failure."""
+
+        class FakeClient:
+            def __init__(self, timeout):
+                self.timeout = timeout
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def post(self, url, headers, json):
+                return httpx.Response(
+                    200,
+                    content=b"not json",
+                    request=httpx.Request("POST", url),
+                )
+
+        monkeypatch.setattr(httpx, "AsyncClient", FakeClient)
+        llm = OpenAILLM(api_key="test-key")
+
+        with pytest.raises(LLMError, match="valid JSON"):
+            await llm.complete("test prompt")
