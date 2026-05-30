@@ -20,3 +20,6 @@ junit.xml
 CLAUD*
 CLAUDE.md
 .claude/
+
+# Local architecture-agent context. Do not publish.
+.specs/
