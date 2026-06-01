@@ -132,21 +132,25 @@ async def log_requests(request: Request, call_next):
 # Exception handlers
 @app.exception_handler(LLMError)
 async def llm_error_handler(request: Request, exc: LLMError):
-    """Handle LLM-related errors."""
-    logger.error(f"LLM error: {str(exc)}")
+    """Handle LLM-related errors.
+
+    Exception message is logged but not returned to the client because it can
+    include the provider, model name, or internal config string.
+    """
+    logger.error(f"LLM error: {str(exc)}", exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        content={"error": "LLM Service Error", "detail": str(exc)},
+        content={"error": "LLM Service Error", "detail": "LLM provider request failed"},
     )
 
 
 @app.exception_handler(LLMTimeoutError)
 async def llm_timeout_handler(request: Request, exc: LLMTimeoutError):
     """Handle LLM timeout errors."""
-    logger.error(f"LLM timeout: {str(exc)}")
+    logger.error(f"LLM timeout: {str(exc)}", exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-        content={"error": "LLM Request Timeout", "detail": str(exc)},
+        content={"error": "LLM Request Timeout", "detail": "LLM provider timed out"},
     )
 
 
@@ -239,10 +243,13 @@ async def analyze_pr(pr: PRPayload) -> AnalysisResponse:
         )
 
     except ValueError as e:
-        logger.error(f"Validation error: {str(e)}")
+        # Validation errors are logged with their message but the client gets a
+        # fixed string so we never echo arbitrary internal text. Pydantic
+        # request validation already handles the well-formed bad-input case.
+        logger.error(f"Validation error in PR analysis: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="Invalid PR payload",
         ) from e
     except LLMError as e:
         logger.error(f"LLM error in PR analysis: {str(e)}", exc_info=True)
@@ -322,10 +329,10 @@ async def analyze_ticket(ticket: TicketPayload) -> AnalysisResponse:
         )
 
     except ValueError as e:
-        logger.error(f"Validation error: {str(e)}")
+        logger.error(f"Validation error in ticket analysis: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="Invalid ticket payload",
         ) from e
     except LLMError as e:
         logger.error(f"LLM error in ticket analysis: {str(e)}", exc_info=True)
