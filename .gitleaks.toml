@@ -1,0 +1,21 @@
+# gitleaks configuration for compliance-copilot.
+#
+# This repo's job is to redact secret-shaped strings before they leave the
+# service. The test suite has to feed the redactor secret-shaped strings to
+# prove it works. Those synthetic test fixtures keep tripping gitleaks's
+# generic-api-key rule on every scan.
+#
+# Allowlist the test files where the secret-shaped fixtures live. The real
+# source under src/ remains in scope and any secret committed there is still
+# a finding.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic test fixtures for redactor testing"
+paths = [
+  '''tests/test_safety\.py''',
+  '''tests/test_app\.py''',
+  '''tests/test_basic\.py''',
+]
