@@ -6,7 +6,7 @@ languages touched by the change.
 ## Required Gates
 
 - Start from the default branch and keep the PR focused on one reviewable change.
-- Run `git diff --check` before committing.
+- Run `git diff --check` and `git diff --cached --check` before committing.
 - Run `repowave scan .` when `repowave.toml` is present.
 - Run every applicable language command below. If a command needs credentials, a live service, or unavailable
   platform tooling, state that in the PR and run the closest local gate.
@@ -21,9 +21,9 @@ languages touched by the change.
 
 ## Current Command Map
 
-- Install: `uv sync`.
-- Lint: `make lint`.
-- Type check: `make type-check`.
-- Tests: `make test`.
-- Coverage: `make test-cov`.
-- Full CI-equivalent gate: `make ci`.
+- Install: `uv sync --extra dev --locked`.
+- Lint: `uv run make lint`.
+- Type check: `uv run make type-check`.
+- Tests: `uv run make test`.
+- Coverage: `uv run make test-cov`.
+- Full CI-equivalent gate: `uv run make ci`.
