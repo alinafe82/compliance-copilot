@@ -92,6 +92,14 @@ class HealthResponse(BaseModel):
     environment: str
 
 
+class RootResponse(BaseModel):
+    """Service metadata response."""
+    service: str
+    version: str
+    docs: str
+    health: str
+
+
 class ErrorResponse(BaseModel):
     """Error response model."""
     error: str
@@ -124,38 +132,42 @@ async def log_requests(request: Request, call_next):
 # Exception handlers
 @app.exception_handler(LLMError)
 async def llm_error_handler(request: Request, exc: LLMError):
-    """Handle LLM-related errors."""
-    logger.error(f"LLM error: {str(exc)}")
+    """Handle LLM-related errors.
+
+    Exception message is logged but not returned to the client because it can
+    include the provider, model name, or internal config string.
+    """
+    logger.error(f"LLM error: {str(exc)}", exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        content={"error": "LLM Service Error", "detail": str(exc)},
+        content={"error": "LLM Service Error", "detail": "LLM provider request failed"},
     )
 
 
 @app.exception_handler(LLMTimeoutError)
 async def llm_timeout_handler(request: Request, exc: LLMTimeoutError):
     """Handle LLM timeout errors."""
-    logger.error(f"LLM timeout: {str(exc)}")
+    logger.error(f"LLM timeout: {str(exc)}", exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-        content={"error": "LLM Request Timeout", "detail": str(exc)},
+        content={"error": "LLM Request Timeout", "detail": "LLM provider timed out"},
     )
 
 
 # API Endpoints
-@app.get("/", response_model=dict[str, str])
-async def root():
+@app.get("/", response_model=RootResponse)
+async def root() -> RootResponse:
     """Root endpoint with API information."""
-    return {
-        "service": settings.app_name,
-        "version": settings.app_version,
-        "docs": "/docs",
-        "health": "/health",
-    }
+    return RootResponse(
+        service=settings.app_name,
+        version=settings.app_version,
+        docs="/docs",
+        health="/health",
+    )
 
 
 @app.get("/health", response_model=HealthResponse)
-async def health_check():
+async def health_check() -> HealthResponse:
     """Health check endpoint for container orchestration."""
     return HealthResponse(
         status="healthy",
@@ -165,7 +177,7 @@ async def health_check():
 
 
 @app.post("/analyze/pr", response_model=AnalysisResponse, status_code=status.HTTP_200_OK)
-async def analyze_pr(pr: PRPayload):
+async def analyze_pr(pr: PRPayload) -> AnalysisResponse:
     """
     Analyze pull request for security and compliance risks.
 
@@ -195,6 +207,7 @@ async def analyze_pr(pr: PRPayload):
             provider=settings.llm_provider,
             api_key=settings.llm_api_key or None,
             model=settings.llm_model,
+            timeout_seconds=settings.request_timeout,
         )
 
         # Generate prompt and get analysis
@@ -205,7 +218,7 @@ async def analyze_pr(pr: PRPayload):
             f"Input:\n{sanitized}"
         )
 
-        result = llm.complete(
+        result = await llm.complete(
             prompt,
             max_tokens=settings.llm_max_tokens,
             temperature=settings.llm_temperature,
@@ -230,11 +243,17 @@ async def analyze_pr(pr: PRPayload):
         )
 
     except ValueError as e:
-        logger.error(f"Validation error: {str(e)}")
+        # Validation errors are logged with their message but the client gets a
+        # fixed string so we never echo arbitrary internal text. Pydantic
+        # request validation already handles the well-formed bad-input case.
+        logger.error(f"Validation error in PR analysis: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="Invalid PR payload",
         ) from e
+    except LLMError as e:
+        logger.error(f"LLM error in PR analysis: {str(e)}", exc_info=True)
+        raise
     except Exception as e:
         logger.error(f"Unexpected error in PR analysis: {str(e)}", exc_info=True)
         raise HTTPException(
@@ -244,7 +263,7 @@ async def analyze_pr(pr: PRPayload):
 
 
 @app.post("/analyze/ticket", response_model=AnalysisResponse, status_code=status.HTTP_200_OK)
-async def analyze_ticket(ticket: TicketPayload):
+async def analyze_ticket(ticket: TicketPayload) -> AnalysisResponse:
     """
     Analyze ticket/issue for security and compliance risks.
 
@@ -274,6 +293,7 @@ async def analyze_ticket(ticket: TicketPayload):
             provider=settings.llm_provider,
             api_key=settings.llm_api_key or None,
             model=settings.llm_model,
+            timeout_seconds=settings.request_timeout,
         )
 
         # Generate prompt and get analysis
@@ -284,7 +304,7 @@ async def analyze_ticket(ticket: TicketPayload):
             f"Input:\n{sanitized}"
         )
 
-        result = llm.complete(
+        result = await llm.complete(
             prompt,
             max_tokens=settings.llm_max_tokens,
             temperature=settings.llm_temperature,
@@ -309,11 +329,14 @@ async def analyze_ticket(ticket: TicketPayload):
         )
 
     except ValueError as e:
-        logger.error(f"Validation error: {str(e)}")
+        logger.error(f"Validation error in ticket analysis: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="Invalid ticket payload",
         ) from e
+    except LLMError as e:
+        logger.error(f"LLM error in ticket analysis: {str(e)}", exc_info=True)
+        raise
     except Exception as e:
         logger.error(f"Unexpected error in ticket analysis: {str(e)}", exc_info=True)
         raise HTTPException(
