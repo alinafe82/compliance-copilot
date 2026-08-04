@@ -16,12 +16,12 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=9.0.3",
+    "pytest>=9.1.0",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
     "coverage[toml]>=7.14.1",
     "mypy>=1.8.0",
-    "ruff>=0.15.16",
+    "ruff>=0.15.18",
     "black>=24.0.0",
     "isort>=8.0.1",
     "types-requests>=2.33.0.20260518",
