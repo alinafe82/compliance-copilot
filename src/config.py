@@ -1,4 +1,5 @@
 """Configuration management for Compliance Copilot."""
+
 import logging
 from functools import lru_cache
 from typing import Literal

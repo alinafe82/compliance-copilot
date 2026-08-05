@@ -1,4 +1,5 @@
 """LLM integration with pluggable backend support."""
+
 import logging
 from abc import ABC, abstractmethod
 from typing import Any
@@ -10,11 +11,13 @@ logger = logging.getLogger(__name__)
 
 class LLMError(Exception):
     """Base exception for LLM-related errors."""
+
     pass
 
 
 class LLMTimeoutError(LLMError):
     """Raised when LLM request times out."""
+
     pass
 
 
@@ -22,9 +25,7 @@ class LLMBackend(ABC):
     """Abstract base class for LLM backends."""
 
     @abstractmethod
-    async def complete(
-        self, prompt: str, max_tokens: int = 1000, temperature: float = 0.0
-    ) -> str:
+    async def complete(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.0) -> str:
         """
         Generate completion from prompt.
 
@@ -46,9 +47,7 @@ class LLMBackend(ABC):
 class MockLLM(LLMBackend):
     """Mock LLM for testing and development."""
 
-    async def complete(
-        self, prompt: str, max_tokens: int = 1000, temperature: float = 0.0
-    ) -> str:
+    async def complete(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.0) -> str:
         """Generate mock completion based on keywords."""
         logger.debug(f"MockLLM received prompt of length {len(prompt)}")
 
@@ -116,9 +115,7 @@ class OpenAILLM(LLMBackend):
         self.base_url = base_url.rstrip("/")
         logger.info(f"Initialized OpenAI backend with model {model}")
 
-    async def complete(
-        self, prompt: str, max_tokens: int = 1000, temperature: float = 0.0
-    ) -> str:
+    async def complete(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.0) -> str:
         """Generate completion using the OpenAI Responses API."""
         try:
             async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:

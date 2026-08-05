@@ -1,4 +1,5 @@
 """Tests for LLM module."""
+
 import httpx
 import pytest
 
@@ -123,11 +124,7 @@ class TestOpenAILLM:
                     200,
                     json={
                         "output": [
-                            {
-                                "content": [
-                                    {"type": "output_text", "text": "Reviewed risk summary."}
-                                ]
-                            }
+                            {"content": [{"type": "output_text", "text": "Reviewed risk summary."}]}
                         ]
                     },
                     request=httpx.Request("POST", url),

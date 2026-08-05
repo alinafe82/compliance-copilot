@@ -1,4 +1,5 @@
 """Tests for FastAPI application."""
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -47,7 +48,7 @@ class TestPRAnalysis:
         payload = {
             "title": "Add new authentication feature",
             "body": "This PR adds OAuth2 authentication support",
-            "diff": "+def authenticate(user):\n+    return True"
+            "diff": "+def authenticate(user):\n+    return True",
         }
         response = client.post("/analyze/pr", json=payload)
         assert response.status_code == 200
@@ -75,41 +76,25 @@ class TestPRAnalysis:
 
     def test_analyze_pr_empty_title(self, client):
         """Test PR analysis with empty title."""
-        payload = {
-            "title": "",
-            "body": "Some body",
-            "diff": "Some diff"
-        }
+        payload = {"title": "", "body": "Some body", "diff": "Some diff"}
         response = client.post("/analyze/pr", json=payload)
         assert response.status_code == 422  # Validation error
 
     def test_analyze_pr_empty_body(self, client):
         """Test PR analysis with empty body."""
-        payload = {
-            "title": "Title",
-            "body": "",
-            "diff": "Some diff"
-        }
+        payload = {"title": "Title", "body": "", "diff": "Some diff"}
         response = client.post("/analyze/pr", json=payload)
         assert response.status_code == 422  # Validation error
 
     def test_analyze_pr_whitespace_only(self, client):
         """Test PR analysis with whitespace-only fields."""
-        payload = {
-            "title": "   ",
-            "body": "\n\t",
-            "diff": "  "
-        }
+        payload = {"title": "   ", "body": "\n\t", "diff": "  "}
         response = client.post("/analyze/pr", json=payload)
         assert response.status_code == 422  # Validation error
 
     def test_analyze_pr_too_long_title(self, client):
         """Test PR analysis with title exceeding max length."""
-        payload = {
-            "title": "x" * 1000,
-            "body": "Body",
-            "diff": "Diff"
-        }
+        payload = {"title": "x" * 1000, "body": "Body", "diff": "Diff"}
         response = client.post("/analyze/pr", json=payload)
         assert response.status_code == 422  # Validation error
 
@@ -118,7 +103,7 @@ class TestPRAnalysis:
         payload = {
             "title": "Innocent title",
             "body": "<script>alert('xss')</script>",
-            "diff": "Some diff"
+            "diff": "Some diff",
         }
         response = client.post("/analyze/pr", json=payload)
         assert response.status_code == 400  # Bad request
@@ -132,7 +117,7 @@ class TestTicketAnalysis:
         """Test successful ticket analysis."""
         payload = {
             "summary": "User cannot login",
-            "description": "Multiple users reporting login failures after deployment"
+            "description": "Multiple users reporting login failures after deployment",
         }
         response = client.post("/analyze/ticket", json=payload)
         assert response.status_code == 200
@@ -148,7 +133,7 @@ class TestTicketAnalysis:
         """Test ticket analysis detects vulnerabilities."""
         payload = {
             "summary": "SQL injection vulnerability found",
-            "description": "Critical security vulnerability allows unauthorized database access"
+            "description": "Critical security vulnerability allows unauthorized database access",
         }
         response = client.post("/analyze/ticket", json=payload)
         assert response.status_code == 200
@@ -158,10 +143,7 @@ class TestTicketAnalysis:
 
     def test_analyze_ticket_empty_summary(self, client):
         """Test ticket analysis with empty summary."""
-        payload = {
-            "summary": "",
-            "description": "Some description"
-        }
+        payload = {"summary": "", "description": "Some description"}
         response = client.post("/analyze/ticket", json=payload)
         assert response.status_code == 422  # Validation error
 

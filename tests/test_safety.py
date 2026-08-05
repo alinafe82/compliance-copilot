@@ -1,4 +1,5 @@
 """Tests for safety module."""
+
 import pytest
 
 from src.safety import mask_pii, validate_input_safety

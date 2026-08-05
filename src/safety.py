@@ -1,4 +1,5 @@
 """Security and PII masking utilities."""
+
 import logging
 import re
 
@@ -15,31 +16,37 @@ PII_PATTERNS: list[tuple[re.Pattern, str]] = [
     # SSN patterns
     (re.compile(r"\b\d{3}-\d{2}-\d{4}\b"), "SSN"),
     (re.compile(r"\b\d{9}\b"), "SSN_NO_DASH"),
-
     # Credit card patterns
     (re.compile(r"\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b"), "CREDIT_CARD"),
-
     # API keys and tokens
     (re.compile(r"(?i)(api[_-]?key|apikey)\s*[:=]\s*['\"]?([A-Za-z0-9-_]{16,})['\"]?"), "API_KEY"),
-    (re.compile(r"(?i)(secret[_-]?key|secretkey)\s*[:=]\s*['\"]?([A-Za-z0-9-_]{16,})['\"]?"), "SECRET_KEY"),
-    (re.compile(r"(?i)(access[_-]?token|accesstoken)\s*[:=]\s*['\"]?([A-Za-z0-9-_.]{16,})['\"]?"), "ACCESS_TOKEN"),
+    (
+        re.compile(r"(?i)(secret[_-]?key|secretkey)\s*[:=]\s*['\"]?([A-Za-z0-9-_]{16,})['\"]?"),
+        "SECRET_KEY",
+    ),
+    (
+        re.compile(
+            r"(?i)(access[_-]?token|accesstoken)\s*[:=]\s*['\"]?([A-Za-z0-9-_.]{16,})['\"]?"
+        ),
+        "ACCESS_TOKEN",
+    ),
     (re.compile(r"(?i)bearer\s+([A-Za-z0-9-_.]{16,})"), "BEARER_TOKEN"),
-
     # AWS keys
     (re.compile(r"AKIA[0-9A-Z]{16}"), "AWS_ACCESS_KEY"),
-    (re.compile(r"(?i)aws[_-]?secret[_-]?access[_-]?key['\"]?\s*[:=]\s*['\"]?([A-Za-z0-9/+=]{40})['\"]?"), "AWS_SECRET_KEY"),
-
+    (
+        re.compile(
+            r"(?i)aws[_-]?secret[_-]?access[_-]?key['\"]?\s*[:=]\s*['\"]?([A-Za-z0-9/+=]{40})['\"]?"
+        ),
+        "AWS_SECRET_KEY",
+    ),
     # Email addresses
     (re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"), "EMAIL"),
-
     # Phone numbers
     (re.compile(r"\b(\+?1[-.]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"), "PHONE"),
-
     # IP addresses (private ones might be sensitive)
     (re.compile(r"\b10\.\d{1,3}\.\d{1,3}\.\d{1,3}\b"), "PRIVATE_IP"),
     (re.compile(r"\b172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3}\b"), "PRIVATE_IP"),
     (re.compile(r"\b192\.168\.\d{1,3}\.\d{1,3}\b"), "PRIVATE_IP"),
-
     # Generic password patterns
     (re.compile(r"(?i)(password|passwd|pwd)\s*[:=]\s*['\"]?([^\s'\"]{8,})['\"]?"), "PASSWORD"),
 ]

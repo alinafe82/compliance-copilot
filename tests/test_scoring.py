@@ -1,4 +1,5 @@
 """Tests for scoring module."""
+
 import pytest
 
 from src.scoring import get_risk_level, score_risk

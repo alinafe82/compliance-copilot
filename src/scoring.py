@@ -1,4 +1,5 @@
 """Risk scoring utilities."""
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,26 +15,22 @@ RISK_KEYWORDS: list[tuple[str, float, str]] = [
     ("secret", 0.5, "security"),
     ("exposed", 0.5, "security"),
     ("leak", 0.5, "security"),
-
     # High impact operations
     ("unauthorized", 0.4, "access"),
     ("privilege", 0.3, "access"),
     ("authentication", 0.3, "access"),
     ("credential", 0.4, "security"),
     ("token", 0.3, "security"),
-
     # Compliance concerns
     ("compliance", 0.3, "compliance"),
     ("gdpr", 0.3, "compliance"),
     ("pii", 0.4, "compliance"),
     ("hipaa", 0.3, "compliance"),
-
     # Remediation indicators (lower weight, still important)
     ("rotate", 0.2, "remediation"),
     ("patch", 0.2, "remediation"),
     ("update", 0.1, "remediation"),
     ("fix", 0.1, "remediation"),
-
     # Infrastructure risks
     ("production", 0.3, "environment"),
     ("database", 0.2, "infrastructure"),
