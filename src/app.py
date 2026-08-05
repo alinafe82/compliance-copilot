@@ -1,4 +1,5 @@
 """Main FastAPI application for Compliance Copilot."""
+
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -52,6 +53,7 @@ if settings.enable_cors:
 # Request/Response Models
 class PRPayload(BaseModel):
     """Pull request analysis payload."""
+
     title: str = Field(..., min_length=1, max_length=500, description="PR title")
     body: str = Field(..., max_length=10000, description="PR description/body")
     diff: str = Field(..., max_length=100000, description="Git diff content")
@@ -66,6 +68,7 @@ class PRPayload(BaseModel):
 
 class TicketPayload(BaseModel):
     """Ticket analysis payload."""
+
     summary: str = Field(..., min_length=1, max_length=500, description="Ticket summary")
     description: str = Field(..., max_length=10000, description="Ticket description")
 
@@ -79,6 +82,7 @@ class TicketPayload(BaseModel):
 
 class AnalysisResponse(BaseModel):
     """Analysis result response."""
+
     summary: str = Field(..., description="Risk analysis summary")
     risk_score: float = Field(..., ge=0.0, le=1.0, description="Numerical risk score (0-1)")
     risk_level: str = Field(..., description="Categorical risk level")
@@ -87,6 +91,7 @@ class AnalysisResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     """Health check response."""
+
     status: str
     version: str
     environment: str
@@ -94,6 +99,7 @@ class HealthResponse(BaseModel):
 
 class RootResponse(BaseModel):
     """Service metadata response."""
+
     service: str
     version: str
     docs: str
@@ -102,6 +108,7 @@ class RootResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     """Error response model."""
+
     error: str
     detail: str
 
