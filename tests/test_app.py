@@ -92,6 +92,21 @@ class TestPRAnalysis:
         response = client.post("/analyze/pr", json=payload)
         assert response.status_code == 422  # Validation error
 
+    def test_analyze_pr_normalizes_surrounding_whitespace(self, client):
+        payload = {"title": "  Safe change  ", "body": "  Details  ", "diff": "  +ok  "}
+        response = client.post("/analyze/pr", json=payload)
+
+        assert response.status_code == 200
+
+    def test_pr_payload_preserves_diff_whitespace(self):
+        from src.app import PRPayload
+
+        diff = "  context\n+added line\n"
+        payload = PRPayload(title=" title ", body="  body evidence  ", diff=diff)
+        assert payload.title == "title"
+        assert payload.body == "  body evidence  "
+        assert payload.diff == diff
+
     def test_analyze_pr_too_long_title(self, client):
         """Test PR analysis with title exceeding max length."""
         payload = {"title": "x" * 1000, "body": "Body", "diff": "Diff"}
@@ -161,6 +176,15 @@ class TestResponseHeaders:
         """Test that responses include request ID."""
         response = client.get("/health")
         assert "x-request-id" in response.headers
+
+    def test_request_ids_are_unique_and_uuid_shaped(self, client):
+        from uuid import UUID
+
+        first = client.get("/health").headers["x-request-id"]
+        second = client.get("/health").headers["x-request-id"]
+
+        assert UUID(first)
+        assert first != second
 
     def test_process_time_header(self, client):
         """Test that responses include processing time."""
