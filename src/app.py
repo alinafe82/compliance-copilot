@@ -3,6 +3,7 @@
 import logging
 import time
 from contextlib import asynccontextmanager
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -58,9 +59,16 @@ class PRPayload(BaseModel):
     body: str = Field(..., max_length=10000, description="PR description/body")
     diff: str = Field(..., max_length=100000, description="Git diff content")
 
-    @field_validator("title", "body", "diff")
+    @field_validator("title")
     @classmethod
     def validate_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Field cannot be empty or whitespace only")
+        return v.strip()
+
+    @field_validator("body", "diff")
+    @classmethod
+    def validate_evidence_not_empty(cls, v: str) -> str:
         if not v or not v.strip():
             raise ValueError("Field cannot be empty or whitespace only")
         return v
@@ -72,9 +80,16 @@ class TicketPayload(BaseModel):
     summary: str = Field(..., min_length=1, max_length=500, description="Ticket summary")
     description: str = Field(..., max_length=10000, description="Ticket description")
 
-    @field_validator("summary", "description")
+    @field_validator("summary")
     @classmethod
     def validate_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Field cannot be empty or whitespace only")
+        return v.strip()
+
+    @field_validator("description")
+    @classmethod
+    def validate_description_not_empty(cls, v: str) -> str:
         if not v or not v.strip():
             raise ValueError("Field cannot be empty or whitespace only")
         return v
@@ -118,7 +133,7 @@ class ErrorResponse(BaseModel):
 async def log_requests(request: Request, call_next):
     """Log all requests with timing."""
     start_time = time.time()
-    request_id = f"{int(time.time() * 1000)}"
+    request_id = str(uuid4())
 
     logger.info(f"[{request_id}] {request.method} {request.url.path}")
 
