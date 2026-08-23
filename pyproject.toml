@@ -26,6 +26,7 @@ dev = [
     "isort>=8.0.1",
     "types-requests>=2.33.0.20260712",
     "httpx>=0.28.1",
+    "bandit>=1.8,<2",
 ]
 
 [tool.ruff]

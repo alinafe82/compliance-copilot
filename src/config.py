@@ -18,7 +18,8 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Server
-    host: str = "0.0.0.0"
+    # Containers must listen beyond loopback so the published port is reachable.
+    host: str = "0.0.0.0"  # nosec B104
     port: int = 8000
 
     # Logging
