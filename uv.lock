@@ -239,7 +239,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.141.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.28.1" },
-    { name = "isort", marker = "extra == 'dev'", specifier = ">=9.0.1" },
+    { name = "isort", marker = "extra == 'dev'", specifier = ">=9.0.2" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=2.3.1" },
     { name = "pydantic", specifier = ">=2.13.4" },
