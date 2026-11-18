@@ -44,7 +44,7 @@ jobs:
           # completed run. This makes delayed or replaced events harmless.
           head_branch="$(gh api "repos/${REPOSITORY}" --jq '.default_branch')"
           completed_runs="$(
-            gh api --paginate --slurp --method GET \
+            gh api --method GET \
               "repos/${REPOSITORY}/actions/workflows/${WORKFLOW_ID}/runs" \
               -f branch="${head_branch}" \
               -f status=completed \
@@ -52,7 +52,7 @@ jobs:
           )"
           latest_run="$(
             jq -c \
-              '[.[] | .workflow_runs[] | select(.event != "pull_request")][0] // empty' \
+              '[.workflow_runs[] | select(.event != "pull_request")][0] // empty' \
               <<<"${completed_runs}"
           )"
           latest_id="$(jq -r '.id // empty' <<<"${latest_run:-{}}")"
